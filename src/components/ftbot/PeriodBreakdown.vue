@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useBotStore } from '@/stores/ftbotwrapper';
 import { TimeSummaryOptions } from '@/types';
 
 const botStore = useBotStore();
@@ -9,7 +8,9 @@ const props = defineProps<{
   multiBotView?: boolean;
 }>();
 
-const hasWeekly = computed(() => botStore.activeBot.botApiVersion >= 2.33 || props.multiBotView);
+const hasWeekly = computed(
+  () => botStore.activeBot.botFeatures.weeklyMonthlyStats || props.multiBotView,
+);
 
 const periodicBreakdownSelections = computed(() => {
   const vals = [{ value: TimeSummaryOptions.daily, text: 'Days' }];
@@ -132,7 +133,11 @@ onMounted(() => {
           </template>
         </Column>
         <Column field="trade_count" header="Trades"></Column>
-        <Column v-if="botStore.activeBot.botApiVersion >= 2.16" field="rel_profit" header="Profit%">
+        <Column
+          v-if="botStore.activeBot.botFeatures.advancedDailyMetrics"
+          field="rel_profit"
+          header="Profit%"
+        >
           <template #body="{ data, field }">
             {{ formatPercent(data[field], 2) }}
           </template>

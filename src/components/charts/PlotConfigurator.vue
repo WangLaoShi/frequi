@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import type { IndicatorConfig, PlotConfig } from '@/types';
 
-const props = defineProps({
-  columns: { required: true, type: Array as () => string[] },
-  isVisible: { required: false, default: false, type: Boolean },
-});
+const props = withDefaults(
+  defineProps<{
+    columns: string[];
+    isVisible?: boolean;
+  }>(),
+  {
+    isVisible: false,
+  },
+);
 
 const plotStore = usePlotConfigStore();
 const botStore = useBotStore();
@@ -37,8 +42,9 @@ const usedColumns = computed((): { text: string; value: string }[] => {
   if (isMainPlot.value) {
     usedCols = Object.keys(plotStore.editablePlotConfig.main_plot);
   }
-  if (selSubPlot.value in plotStore.editablePlotConfig.subplots) {
-    usedCols = Object.keys(plotStore.editablePlotConfig.subplots[selSubPlot.value]);
+  const selSubPlot_ = plotStore.editablePlotConfig.subplots[selSubPlot.value];
+  if (selSubPlot_) {
+    usedCols = Object.keys(selSubPlot_);
   }
   return usedCols.map((col) => ({
     value: col,
@@ -47,15 +53,18 @@ const usedColumns = computed((): { text: string; value: string }[] => {
 });
 
 function addIndicator(newIndicator: Record<string, IndicatorConfig>) {
+  console.log('Adding indicator', newIndicator);
   // const { plotConfig.value } = this;
   const name = Object.keys(newIndicator)[0];
+  if (!name) return;
+
   const indicator = newIndicator[name];
   if (isMainPlot.value) {
     // console.log(`Adding ${name} to MainPlot`);
     plotStore.editablePlotConfig.main_plot[name] = { ...indicator };
   } else {
     // console.log(`Adding ${name} to ${selSubPlot.value}`);
-    plotStore.editablePlotConfig.subplots[selSubPlot.value][name] = { ...indicator };
+    plotStore.editablePlotConfig.subplots[selSubPlot.value]![name] = { ...indicator };
   }
 
   plotStore.editablePlotConfig = { ...plotStore.editablePlotConfig };
@@ -63,15 +72,18 @@ function addIndicator(newIndicator: Record<string, IndicatorConfig>) {
   addNewIndicator.value = false;
 }
 
-const selIndicator = computed({
+const selIndicator = computed<Record<string, IndicatorConfig>>({
   get() {
     if (addNewIndicator.value) {
       return {};
     }
     if (selIndicatorName.value) {
-      return {
-        [selIndicatorName.value]: currentPlotConfig.value[selIndicatorName.value],
-      };
+      const currentIndicator = currentPlotConfig.value?.[selIndicatorName.value];
+      if (currentIndicator) {
+        return {
+          [selIndicatorName.value]: currentIndicator,
+        };
+      }
     }
     return {};
   },
@@ -108,7 +120,7 @@ function removeIndicator() {
     delete plotStore.editablePlotConfig.main_plot[selIndicatorName.value];
   } else {
     console.log(`Removing ${selIndicatorName.value} from ${selSubPlot.value}`);
-    delete plotStore.editablePlotConfig.subplots[selSubPlot.value][selIndicatorName.value];
+    delete plotStore.editablePlotConfig.subplots[selSubPlot.value]?.[selIndicatorName.value];
   }
 
   plotStore.editablePlotConfig = { ...plotStore.editablePlotConfig };
@@ -132,18 +144,24 @@ function deleteSubplot(subplotName: string) {
   delete plotStore.editablePlotConfig.subplots[subplotName];
   // Reassign to trigger reactivity
   plotStore.editablePlotConfig = { ...plotStore.editablePlotConfig };
-  selSubPlot.value = subplots.value[subplots.value.length - 1];
+  selSubPlot.value = subplots.value[subplots.value.length - 1] ?? 'main_plot';
 }
 
 function renameSubplot(oldName: string, newName: string) {
-  plotStore.editablePlotConfig.subplots[newName] = plotStore.editablePlotConfig.subplots[oldName];
-  delete plotStore.editablePlotConfig.subplots[oldName];
+  const oldSubPlot = plotStore.editablePlotConfig.subplots[oldName];
+  if (oldSubPlot) {
+    plotStore.editablePlotConfig.subplots[newName] = oldSubPlot;
+  }
   selSubPlot.value = newName;
+  delete plotStore.editablePlotConfig.subplots[oldName];
 }
 
 function loadPlotConfig() {
   // Reset from store
-  plotStore.editablePlotConfig = deepClone(plotStore.customPlotConfigs[plotStore.plotConfigName]);
+  const existingConf = plotStore.customPlotConfigs[plotStore.plotConfigName];
+  if (existingConf) {
+    plotStore.editablePlotConfig = deepClone(existingConf);
+  }
 }
 
 function loadConfigFromString() {
@@ -221,6 +239,18 @@ watch(
   },
 );
 const fromPlotTemplateVisible = ref(false);
+
+const showTagsInTooltips = computed({
+  get() {
+    return plotStore.editablePlotConfig.options?.showTags ?? true;
+  },
+  set(value: boolean) {
+    if (!plotStore.editablePlotConfig.options) {
+      plotStore.editablePlotConfig.options = {};
+    }
+    plotStore.editablePlotConfig.options.showTags = value;
+  },
+});
 </script>
 
 <template>
@@ -228,6 +258,9 @@ const fromPlotTemplateVisible = ref(false);
     <label for="idPlotConfigName">Plot config name</label>
     <PlotConfigSelect allow-edit></PlotConfigSelect>
     <Divider />
+    <BaseCheckbox v-model="showTagsInTooltips" class="mb-1">Show Tags in Tooltips</BaseCheckbox>
+    <Divider />
+
     <label for="fieldSel" class="mb">Target Plot</label>
     <EditValue
       v-model="selSubPlot"
@@ -344,7 +377,8 @@ const fromPlotTemplateVisible = ref(false);
       > -->
       <Button
         :disabled="
-          (botStore.activeBot.isWebserverMode && botStore.activeBot.botApiVersion < 2.23) ||
+          (botStore.activeBot.isWebserverMode &&
+            !botStore.activeBot.botFeatures.plotConfigFromServer) ||
           !botStore.activeBot.isBotOnline ||
           addNewIndicator
         "

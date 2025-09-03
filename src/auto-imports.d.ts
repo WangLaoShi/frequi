@@ -54,6 +54,7 @@ declare global {
   const eagerComputed: typeof import('@vueuse/core')['eagerComputed']
   const echartsGridDefault: typeof import('./utils/charts/chartZoom')['echartsGridDefault']
   const effectScope: typeof import('vue')['effectScope']
+  const evaluateFeatures: typeof import('./utils/features')['evaluateFeatures']
   const exportForTesting: typeof import('./utils/formatters/timeformat')['exportForTesting']
   const extendRef: typeof import('@vueuse/core')['extendRef']
   const findGridLayout: typeof import('./stores/layout')['findGridLayout']
@@ -72,9 +73,11 @@ declare global {
   const getAvailableBots: typeof import('./composables/loginInfo')['getAvailableBots']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getCurrentWatcher: typeof import('vue')['getCurrentWatcher']
   const getDiffColumnsFromPlotConfig: typeof import('./utils/charts/areaPlotDataset')['getDiffColumnsFromPlotConfig']
   const getTheme: typeof import('./utils/themes')['getTheme']
   const h: typeof import('vue')['h']
+  const hasFeature: typeof import('./utils/features')['hasFeature']
   const heikinAshiDataset: typeof import('./utils/charts/heikinAshiDataset')['heikinAshiDataset']
   const humanizeDurationFromSeconds: typeof import('./utils/formatters/timeformat')['humanizeDurationFromSeconds']
   const ignorableWatch: typeof import('@vueuse/core')['ignorableWatch']
@@ -87,6 +90,7 @@ declare global {
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
   const isRef: typeof import('vue')['isRef']
+  const isShallow: typeof import('vue')['isShallow']
   const makeDestructurable: typeof import('@vueuse/core')['makeDestructurable']
   const mapActions: typeof import('pinia')['mapActions']
   const mapGetters: typeof import('pinia')['mapGetters']
@@ -335,6 +339,7 @@ declare global {
   const useThrottleFn: typeof import('@vueuse/core')['useThrottleFn']
   const useThrottledRefHistory: typeof import('@vueuse/core')['useThrottledRefHistory']
   const useTimeAgo: typeof import('@vueuse/core')['useTimeAgo']
+  const useTimeAgoIntl: typeof import('@vueuse/core')['useTimeAgoIntl']
   const useTimeout: typeof import('@vueuse/core')['useTimeout']
   const useTimeoutFn: typeof import('@vueuse/core')['useTimeoutFn']
   const useTimeoutPoll: typeof import('@vueuse/core')['useTimeoutPoll']
@@ -381,7 +386,7 @@ declare global {
 // for type re-export
 declare global {
   // @ts-ignore
-  export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
+  export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
   export type { ColorPreferences } from './stores/colors'
@@ -456,6 +461,7 @@ declare module 'vue' {
     readonly eagerComputed: UnwrapRef<typeof import('@vueuse/core')['eagerComputed']>
     readonly echartsGridDefault: UnwrapRef<typeof import('./utils/charts/chartZoom')['echartsGridDefault']>
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
+    readonly evaluateFeatures: UnwrapRef<typeof import('./utils/features')['evaluateFeatures']>
     readonly exportForTesting: UnwrapRef<typeof import('./utils/formatters/timeformat')['exportForTesting']>
     readonly extendRef: UnwrapRef<typeof import('@vueuse/core')['extendRef']>
     readonly findGridLayout: UnwrapRef<typeof import('./stores/layout')['findGridLayout']>
@@ -472,8 +478,10 @@ declare module 'vue' {
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getCurrentWatcher: UnwrapRef<typeof import('vue')['getCurrentWatcher']>
     readonly getDiffColumnsFromPlotConfig: UnwrapRef<typeof import('./utils/charts/areaPlotDataset')['getDiffColumnsFromPlotConfig']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
+    readonly hasFeature: UnwrapRef<typeof import('./utils/features')['hasFeature']>
     readonly heikinAshiDataset: UnwrapRef<typeof import('./utils/charts/heikinAshiDataset')['heikinAshiDataset']>
     readonly humanizeDurationFromSeconds: UnwrapRef<typeof import('./utils/formatters/timeformat')['humanizeDurationFromSeconds']>
     readonly ignorableWatch: UnwrapRef<typeof import('@vueuse/core')['ignorableWatch']>
@@ -486,6 +494,7 @@ declare module 'vue' {
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly isShallow: UnwrapRef<typeof import('vue')['isShallow']>
     readonly makeDestructurable: UnwrapRef<typeof import('@vueuse/core')['makeDestructurable']>
     readonly mapActions: UnwrapRef<typeof import('pinia')['mapActions']>
     readonly mapGetters: UnwrapRef<typeof import('pinia')['mapGetters']>
@@ -734,6 +743,7 @@ declare module 'vue' {
     readonly useThrottleFn: UnwrapRef<typeof import('@vueuse/core')['useThrottleFn']>
     readonly useThrottledRefHistory: UnwrapRef<typeof import('@vueuse/core')['useThrottledRefHistory']>
     readonly useTimeAgo: UnwrapRef<typeof import('@vueuse/core')['useTimeAgo']>
+    readonly useTimeAgoIntl: UnwrapRef<typeof import('@vueuse/core')['useTimeAgoIntl']>
     readonly useTimeout: UnwrapRef<typeof import('@vueuse/core')['useTimeout']>
     readonly useTimeoutFn: UnwrapRef<typeof import('@vueuse/core')['useTimeoutFn']>
     readonly useTimeoutPoll: UnwrapRef<typeof import('@vueuse/core')['useTimeoutPoll']>

@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { useBotStore } from '@/stores/ftbotwrapper';
-import type { ProfitInterface, ComparisonTableItems } from '@/types';
+import type { ComparisonTableItems } from '@/types';
 
 const botStore = useBotStore();
 
 const allToggled = computed<boolean>({
   get: () => Object.values(botStore.botStores).every((i) => i.isSelected),
   set: (val) => {
-    for (const botId in botStore.botStores) {
-      botStore.botStores[botId].isSelected = val;
+    for (const bot of Object.values(botStore.botStores)) {
+      bot.isSelected = val;
     }
   },
 });
@@ -26,15 +25,19 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
     wins: 0,
     losses: 0,
   };
+  Object.entries(botStore.allProfit).forEach(([k, v]) => {
+    const thisBotStore = botStore.botStores[k];
+    if (!thisBotStore) return;
 
-  Object.entries(botStore.allProfit).forEach(([k, v]: [k: string, v: ProfitInterface]) => {
-    const allStakes = botStore.allOpenTrades[k].reduce((a, b) => a + b.stake_amount, 0);
+    const allOpenTrades = botStore.allOpenTrades[k];
+    if (!allOpenTrades) return;
+    const allStakes = allOpenTrades.reduce((a, b) => a + b.stake_amount, 0);
     const profitOpenRatio =
-      botStore.allOpenTrades[k].reduce(
+      allOpenTrades.reduce(
         (a, b) => a + (b.total_profit_ratio ?? b.profit_ratio) * b.stake_amount,
         0,
       ) / allStakes;
-    const profitOpen = botStore.allOpenTrades[k].reduce(
+    const profitOpen = allOpenTrades.reduce(
       (a, b) => a + (b.total_profit_abs ?? b.profit_abs ?? 0),
       0,
     );
@@ -42,24 +45,27 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
     // TODO: handle one inactive bot ...
     val.push({
       botId: k,
-      botName: botStore.availableBots[k].botName || botStore.availableBots[k].botId,
+      // botName:
+      //   `${thisBotStore.botName} - ${botStore.availableBots[k].botName}` || thisBotStore.botId,
+
+      botName: thisBotStore.uiBotName || thisBotStore.botId,
       trades: `${botStore.allOpenTradeCount[k]} / ${
         botStore.allBotState[k]?.max_open_trades || 'N/A'
       }`,
-      profitClosed: v.profit_closed_coin,
-      profitClosedRatio: v.profit_closed_ratio || 0,
+      profitClosed: v?.profit_closed_coin ?? 0,
+      profitClosedRatio: v?.profit_closed_ratio || 0,
       stakeCurrency: botStore.allBotState[k]?.stake_currency || '',
       profitOpenRatio,
       profitOpen,
-      wins: v.winning_trades,
-      losses: v.losing_trades,
+      wins: v?.winning_trades ?? 0,
+      losses: v?.losing_trades ?? 0,
       balance: botStore.allBalance[k]?.total_bot ?? botStore.allBalance[k]?.total,
       stakeCurrencyDecimals: botStore.allBotState[k]?.stake_currency_decimals || 3,
       isDryRun: botStore.allBotState[k]?.dry_run,
       isOnline: botStore.botStores[k]?.isBotOnline,
     });
-    if (v.profit_closed_coin !== undefined) {
-      if (botStore.botStores[k].isSelected) {
+    if (v?.profit_closed_coin !== undefined) {
+      if (thisBotStore.isSelected) {
         // Summary should only include selected bots
         summary.profitClosed += v.profit_closed_coin;
         summary.profitOpen += profitOpen;
@@ -86,7 +92,7 @@ const tableItems = computed<ComparisonTableItems[]>(() => {
             <BaseCheckbox
               v-if="data.botId && botStore.botCount > 1"
               v-model="
-                botStore.botStores[(data as unknown as ComparisonTableItems).botId ?? ''].isSelected
+                botStore.botStores[(data as unknown as ComparisonTableItems).botId!]!.isSelected
               "
               title="Show this bot in Dashboard"
               >{{ data[field] }}</BaseCheckbox

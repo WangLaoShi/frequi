@@ -1,27 +1,28 @@
 <script setup lang="ts">
-import { usePlotConfigStore } from '@/stores/plotConfig';
-import { useSettingsStore } from '@/stores/settings';
 import type { ChartSliderPosition, PairHistory, Trade } from '@/types';
 import { LoadingStatus } from '@/types';
 
-import { useBotStore } from '@/stores/ftbotwrapper';
-
-import { useColorStore } from '@/stores/colors';
-
-const props = defineProps({
-  trades: { required: false, default: () => [], type: Array as () => Trade[] },
-  availablePairs: { required: true, type: Array as () => string[] },
-  timeframe: { required: true, type: String },
-  historicView: { required: false, default: false, type: Boolean },
-  plotConfigModal: { required: false, default: true, type: Boolean },
-  /** Only required if historicView is true */
-  strategy: { required: false, default: '', type: String },
-  sliderPosition: {
-    required: false,
-    type: Object as () => ChartSliderPosition,
-    default: () => undefined,
+const props = withDefaults(
+  defineProps<{
+    trades?: Trade[];
+    availablePairs: string[];
+    timeframe: string;
+    historicView?: boolean;
+    /** Reload data on pair switch if in historic view */
+    reloadDataOnSwitch?: boolean;
+    plotConfigModal?: boolean;
+    strategy?: string;
+    sliderPosition?: ChartSliderPosition;
+  }>(),
+  {
+    trades: () => [],
+    historicView: false,
+    plotConfigModal: true,
+    reloadDataOnSwitch: false,
+    strategy: '',
+    sliderPosition: undefined,
   },
-});
+);
 
 const emit = defineEmits<{
   refreshData: [pair: string, columns: string[]];
@@ -94,11 +95,18 @@ function refreshIfNecessary() {
   }
 }
 
+function assignFirstPair() {
+  const [firstPair] = props.availablePairs;
+  if (firstPair) {
+    botStore.activeBot.plotPair = firstPair;
+  }
+}
+
 watch(
   () => props.availablePairs,
   () => {
     if (!props.availablePairs.find((p) => p === botStore.activeBot.plotPair)) {
-      [botStore.activeBot.plotPair] = props.availablePairs;
+      assignFirstPair();
       refresh();
     }
   },
@@ -116,6 +124,8 @@ watch(
   () => {
     if (!props.historicView) {
       refresh();
+    } else if (props.reloadDataOnSwitch) {
+      refreshIfNecessary();
     }
   },
 );
@@ -146,10 +156,12 @@ onMounted(() => {
   if (botStore.activeBot.selectedPair) {
     botStore.activeBot.plotPair = botStore.activeBot.selectedPair;
   } else if (props.availablePairs.length > 0) {
-    [botStore.activeBot.plotPair] = props.availablePairs;
+    assignFirstPair();
   }
   plotStore.plotConfigChanged();
-  refreshIfNecessary();
+  if (!props.historicView) {
+    refreshIfNecessary();
+  }
 });
 </script>
 
@@ -229,7 +241,7 @@ onMounted(() => {
         </div>
       </div>
       <div class="h-full flex">
-        <div class="min-w-0 w-full shrink">
+        <div class="min-w-0 w-full flex-1">
           <CandleChart
             v-if="hasDataset"
             :dataset="dataset"
@@ -242,6 +254,7 @@ onMounted(() => {
             :slider-position="sliderPosition"
             :color-up="colorStore.colorUp"
             :color-down="colorStore.colorDown"
+            :start-candle-count="settingsStore.chartDefaultCandleCount"
             :label-side="settingsStore.chartLabelSide"
           />
           <div v-else class="m-auto">

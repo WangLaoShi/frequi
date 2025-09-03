@@ -60,10 +60,11 @@ const props = defineProps<{
   useUTC: boolean;
   plotConfig: PlotConfig;
   theme: 'dark' | 'light';
-  sliderPosition: ChartSliderPosition | undefined;
+  sliderPosition?: ChartSliderPosition;
   colorUp: string;
   colorDown: string;
   labelSide: 'left' | 'right';
+  startCandleCount: number;
 }>();
 
 const isLabelLeft = computed(() => props.labelSide === 'left');
@@ -138,6 +139,9 @@ function updateChart(initial = false) {
   const colLow = columns.findIndex((el) => el === 'low');
   const colClose = columns.findIndex((el) => el === 'close');
   const colVolume = columns.findIndex((el) => el === 'volume');
+  const colEnterTag = columns.findIndex((el) => el === 'enter_tag');
+  const colExitTag = columns.findIndex((el) => el === 'exit_tag');
+
   const colEntryData = columns.findIndex(
     (el) => el === '_buy_signal_close' || el === '_enter_long_signal_close',
   );
@@ -154,7 +158,8 @@ function updateChart(initial = false) {
   if (Array.isArray(chartOptions.value?.dataZoom)) {
     // Only set zoom once ...
     if (initial) {
-      const startingZoom = (1 - 250 / props.dataset.length) * 100;
+      // Add 2 candles to the initial zoom to allow for a "scroll past" effect
+      const startingZoom = (1 - (props.startCandleCount + 2) / props.dataset.length) * 100;
       chartOptions.value.dataZoom.forEach((el, i) => {
         if (chartOptions.value && chartOptions.value.dataZoom) {
           chartOptions.value.dataZoom[i].start = startingZoom;
@@ -175,13 +180,19 @@ function updateChart(initial = false) {
     : props.dataset.data.slice();
 
   diffCols.value.forEach(([colFrom, colTo]) => {
-    // Enhance dataset with diff columns for area plots
-    dataset = calculateDiff(columns, dataset, colFrom, colTo);
+    if (colFrom && colTo) {
+      // Enhance dataset with diff columns for area plots
+      dataset = calculateDiff(columns, dataset, colFrom, colTo);
+    }
   });
   // Add new rows to end to allow slight "scroll past"
-  const newArray = Array(dataset.length > 0 ? dataset[dataset.length - 2].length : 0);
-  newArray[colDate] = dataset[dataset.length - 1][colDate] + props.dataset.timeframe_ms * 3;
-  dataset.push(newArray);
+  const scrollPastLength = 5;
+  const lastColDate = dataset[dataset.length - 1]?.[colDate];
+  if (lastColDate) {
+    const newArray = Array(scrollPastLength);
+    newArray[colDate] = lastColDate + props.dataset.timeframe_ms * scrollPastLength;
+    dataset.push(newArray);
+  }
 
   const options: EChartsOption = {
     dataset: {
@@ -248,6 +259,7 @@ function updateChart(initial = false) {
         symbolSize: 10,
         color: buySignalColor,
         tooltipPrefix: 'Long entry',
+        colTooltip: colEnterTag,
       },
       {
         colData: colExitData,
@@ -256,6 +268,7 @@ function updateChart(initial = false) {
         symbolSize: 8,
         color: sellSignalColor,
         tooltipPrefix: 'Long exit',
+        colTooltip: colExitTag,
       },
       {
         colData: colShortEntryData,
@@ -265,6 +278,7 @@ function updateChart(initial = false) {
         symbolRotate: 180,
         color: shortEntrySignalColor,
         tooltipPrefix: 'Short entry',
+        colTooltip: colEnterTag,
       },
       {
         colData: colShortExitData,
@@ -273,6 +287,7 @@ function updateChart(initial = false) {
         symbolSize: 8,
         color: shortexitSignalColor,
         tooltipPrefix: 'Short exit',
+        colTooltip: colExitTag,
       },
     ];
 
@@ -290,11 +305,22 @@ function updateChart(initial = false) {
             color: config.color,
           },
           tooltip: {
-            valueFormatter: (value) => (value ? `${config.tooltipPrefix} ${value}` : ''),
+            valueFormatter: (value) => {
+              if (Array.isArray(value)) {
+                // Show both value and tag
+                return value.length > 0 && value[0]
+                  ? `${config.tooltipPrefix} ${value[0]} ${value[1]?.toString().substring(0, 100) ? `(${value[1]})` : ''}`
+                  : '';
+              }
+              // Fallback for single value
+              return value ? `${config.tooltipPrefix} ${value}` : '';
+            },
           },
           encode: {
             x: colDate,
             y: config.colData,
+            tooltip:
+              config.colTooltip >= 0 ? [config.colData, config.colTooltip] : [config.colData],
           },
         });
       }
@@ -324,7 +350,10 @@ function updateChart(initial = false) {
             };
             const areaSeries = generateAreaCandleSeries(colDate, fillCol, key, fillValue, 0);
 
-            chartOptions.value.series[chartOptions.value.series.length - 1]['stack'] = key;
+            const currentSeries = chartOptions.value.series[chartOptions.value.series.length - 1];
+            if (currentSeries) {
+              currentSeries['stack'] = key;
+            }
             chartOptions.value.series.push(areaSeries);
           }
           chartOptions.value?.series.splice(chartOptions.value?.series.length - 1, 0);
@@ -412,8 +441,10 @@ function updateChart(initial = false) {
                 fillValue,
                 plotIndex,
               );
-
-              chartOptions.value.series[chartOptions.value.series.length - 1]['stack'] = sk;
+              const currentSeries = chartOptions.value.series[chartOptions.value.series.length - 1];
+              if (currentSeries) {
+                currentSeries['stack'] = sk;
+              }
               chartOptions.value.series.push(areaSeries);
             }
             chartOptions.value?.series.splice(chartOptions.value?.series.length - 1, 0);
@@ -434,8 +465,12 @@ function updateChart(initial = false) {
   // }
   if (Array.isArray(chartOptions.value.grid)) {
     // Last subplot is bottom
-    chartOptions.value.grid[chartOptions.value.grid.length - 1].bottom = '50px';
-    delete chartOptions.value.grid[chartOptions.value.grid.length - 1].top;
+    const localGrid = chartOptions.value.grid[chartOptions.value.grid.length - 1];
+    if (localGrid) {
+      // Last subplot is bottom
+      localGrid.bottom = '50px';
+      delete localGrid.top;
+    }
   }
 
   const nameTrades = 'Trades';
@@ -508,7 +543,7 @@ function initializeChartOptions() {
         // and on the left if hovering on the right.
         const obj = { top: 60 };
         const mouseIsLeft = pos[0] < size.viewSize[0] / 2;
-        obj[['left', 'right'][+mouseIsLeft]] = mouseIsLeft ? 5 : 60;
+        obj[['left', 'right'][+mouseIsLeft]!] = mouseIsLeft ? 5 : 60;
         return obj;
       },
     },

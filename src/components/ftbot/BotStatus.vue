@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useBotStore } from '@/stores/ftbotwrapper';
-
 const botStore = useBotStore();
 </script>
 
@@ -82,9 +80,10 @@ const botStore = useBotStore();
         }}
       </span>
     </p>
+    <Divider />
     <BotProfit
       class="mx-1"
-      :profit="botStore.activeBot.profit"
+      :profit-all="botStore.activeBot.profitAll"
       :stake-currency="botStore.activeBot.botState.stake_currency ?? 'USDT'"
       :stake-currency-decimals="botStore.activeBot.botState.stake_currency_decimals ?? 3"
     />

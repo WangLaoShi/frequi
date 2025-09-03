@@ -1,19 +1,12 @@
 <script setup lang="ts">
-import { useBotStore } from '@/stores/ftbotwrapper';
 import type { ForceSellPayload, Trade } from '@/types';
 import { ref, computed } from 'vue';
 import { refDebounced } from '@vueuse/core';
 
-const props = defineProps({
-  trade: {
-    type: Object as () => Trade,
-    required: true,
-  },
-  stakeCurrencyDecimals: {
-    type: Number,
-    required: true,
-  },
-});
+const props = defineProps<{
+  trade: Trade;
+  stakeCurrencyDecimals: number;
+}>();
 
 const model = defineModel<boolean>();
 

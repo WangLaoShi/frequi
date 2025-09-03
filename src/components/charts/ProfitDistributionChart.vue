@@ -14,7 +14,6 @@ import {
 } from 'echarts/components';
 
 import type { ClosedTrade } from '@/types';
-import { useSettingsStore } from '@/stores/settings';
 
 use([
   BarChart,
@@ -31,10 +30,15 @@ use([
 // Define Column labels here to avoid typos
 const CHART_PROFIT = 'Trade count';
 
-const props = defineProps({
-  trades: { required: true, type: Array as () => ClosedTrade[] },
-  showTitle: { default: true, type: Boolean },
-});
+const props = withDefaults(
+  defineProps<{
+    trades: ClosedTrade[];
+    showTitle?: boolean;
+  }>(),
+  {
+    showTitle: true,
+  },
+);
 const settingsStore = useSettingsStore();
 // registerTransform(ecStat.transform.histogram);
 // console.log(profits);
